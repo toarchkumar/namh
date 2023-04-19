@@ -1,21 +1,26 @@
 import numpy as np
 import pandas as pd
-from vectorize import encode
+from vectorize import encode, get_tokenizer_and_model
 from namh import find_closest_match
 from tqdm import tqdm
 
 # load data
 data = pd.read_csv('data_vector.csv')
 
+# get tokenizer, model
+model_name = 'bert-base-cased'
+tokenizer, model = get_tokenizer_and_model(model_name)
+
 # convert embedding vectors to numpy arrays
-embedding_list = [np.array(eval(embedding)).flatten() for embedding in data['embedding']]
+embedding_list = [np.array(eval(embedding)).flatten() for embedding in data['embedding_vector']]
+
 
 # query similarity
 input_text = "Clean makeup."
 
 # encode the input text
 print("Encoding input text...")
-prompt_vector = encode(input_text)
+prompt_vector = encode(input_text, model_name, tokenizer, model)
 prompt_vector = np.array(prompt_vector).flatten()
 
 # check embedding_list sizing

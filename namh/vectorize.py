@@ -6,12 +6,13 @@ from typing import List
 from tqdm import tqdm
 
 # load pre-trained llm and tokenizer
-model_name = 'bert-base-cased'
-tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
-model = transformers.AutoModel.from_pretrained(model_name)
+def get_tokenizer_and_model(model_name = 'bert-base-cased'):
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
+    model = transformers.AutoModel.from_pretrained(model_name)
+    return tokenizer, model
 
 # define a function to encode text into a vector embedding
-def encode(texts: List[str], tokenizer, model, batch_size=16) -> torch.Tensor:
+def encode(texts: List[str], model_name, tokenizer, model, batch_size=16) -> torch.Tensor:
     max_length = tokenizer.max_model_input_sizes[model_name]
     
     # truncate and encode texts
@@ -37,6 +38,10 @@ def encode(texts: List[str], tokenizer, model, batch_size=16) -> torch.Tensor:
 if __name__ == '__main__':
     # get data
     data = pd.read_csv('data.csv')
+
+    # get tokenizer, model
+    model_name = 'bert-base-cased'
+    tokenizer, model = get_tokenizer_and_model(model_name)
 
     # encode the subject lines into vector embeddings
     embeddings = encode(data['description'].tolist(), tokenizer, model)
