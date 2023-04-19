@@ -1,7 +1,9 @@
 import torch
 import transformers
 import pandas as pd
+from torch.utils.data import Dataset, DataLoader
 from typing import List
+from tqdm import tqdm
 
 # load pre-trained llm and tokenizer
 model_name = 'bert-base-cased'
@@ -9,31 +11,37 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
 model = transformers.AutoModel.from_pretrained(model_name)
 
 # define a function to encode text into a vector embedding
-def encode(text: str) -> List[float]:
-    # Truncate the text to fit within the maximum sequence length
+def encode(texts: List[str], tokenizer, model, batch_size=16) -> torch.Tensor:
     max_length = tokenizer.max_model_input_sizes[model_name]
-    text = text[:max_length - 2]  # Subtract 2 for the [CLS] and [SEP] tokens
+    
+    # truncate and encode texts
+    encoded_texts = tokenizer(texts, padding=True, truncation=True, max_length=max_length, return_tensors='pt')
+    input_ids = encoded_texts['input_ids']
 
-    # Encode the text and add the [CLS] and [SEP] tokens
-    input_ids = torch.tensor(tokenizer.encode('[CLS]' + text + '[SEP]')).unsqueeze(0)
-    outputs = model(input_ids)
-    last_hidden_state = outputs.last_hidden_state
+    # create a DataLoader to handle batching
+    dataset = torch.utils.data.TensorDataset(input_ids)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
 
-    # Take the first token's embedding as the subject line's representation
-    embedding = last_hidden_state[:, 0, :].detach().numpy()
-    return embedding.tolist()
+    # encode the texts in batches
+    embeddings = []
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="Encoding texts"):
+            outputs = model(*batch)
+            last_hidden_state = outputs.last_hidden_state
+            batch_embeddings = last_hidden_state[:, 0, :]
+            embeddings.append(batch_embeddings)
+
+    # stack the embeddings and return as a tensor
+    return torch.cat(embeddings, dim=0)
 
 if __name__ == '__main__':
     # get data
     data = pd.read_csv('data.csv')
 
-    # Encode the subject lines into vector embeddings
-    embeddings = [encode(text) for text in data['description']]
-    data['embedding'] = embeddings
+    # encode the subject lines into vector embeddings
+    embeddings = encode(data['description'].tolist(), tokenizer, model)
+    data['embedding_vector'] = embeddings.tolist()
 
-    # convert array of floats to dense vector
-    data['embedding_vector'] = data['embedding'].apply(lambda x: torch.tensor(x).squeeze())
-    
-    # print the resulting dataframe
+    # print the result and save
     print(data)
     data.to_csv('data_vector.csv')
