@@ -31,9 +31,9 @@ if __name__ == '__main__':
     embeddings = [encode(text) for text in data['description']]
     data['embedding'] = embeddings
 
-    # Convert array of floats to dense vector
+    # convert array of floats to dense vector
     data['embedding_vector'] = data['embedding'].apply(lambda x: torch.tensor(x).squeeze())
     
-    # Print the resulting dataframe
+    # print the resulting dataframe
     print(data)
     data.to_csv('data_vector.csv')
